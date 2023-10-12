@@ -5,6 +5,7 @@ import {
   ChevronUp,
   Divide,
   Loader2,
+  RotateCw,
   SearchIcon,
 } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -26,6 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import PdfFullscreen from "./PdfFullscreen";
 
 import SimpleBar from "simplebar-react";
 
@@ -41,6 +43,10 @@ const PdfRenderer = ({ url }: PdfRendererProps) => {
   const [numPages, setNumPages] = useState<number>();
   const [currPage, setCurrPage] = useState<number>(1);
   const [scale, setScale] = useState<number>(1);
+  const [rotation, setRotation] = useState<number>(0);
+  const [renderedScale, setRenderedScale] = useState<number | null>(null);
+
+  const isLoading = renderedScale !== scale;
 
   const CustomPageValidator = z.object({
     page: z
@@ -78,6 +84,7 @@ const PdfRenderer = ({ url }: PdfRendererProps) => {
             disabled={currPage <= 1}
             onClick={() => {
               setCurrPage((prev) => (prev - 1 > 1 ? prev - 1 : 1));
+              setValue("page", String(currPage - 1));
             }}
             variant="ghost"
             aria-label="previous page"
@@ -108,6 +115,7 @@ const PdfRenderer = ({ url }: PdfRendererProps) => {
               setCurrPage((prev) =>
                 prev + 1 > numPages! ? numPages! : prev + 1
               );
+              setValue("page", String(currPage + 1));
             }}
             variant="ghost"
             aria-label="next page"
@@ -138,6 +146,16 @@ const PdfRenderer = ({ url }: PdfRendererProps) => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <Button
+            onClick={() => setRotation((prev) => prev + 90)}
+            variant="ghost"
+            aria-label="rotate 90 degrees"
+          >
+            <RotateCw className="h-4 w-4" />
+          </Button>
+
+          <PdfFullscreen fileUrl={url} />
         </div>
       </div>
       <div className="flex-1 w-full max-h-screen">
@@ -160,11 +178,32 @@ const PdfRenderer = ({ url }: PdfRendererProps) => {
               file={url}
               className="max-h-full"
             >
+              {/* // keeping the old page in place, while the new page(zoomed in) is being rendered */}
+              {isLoading && renderedScale ? (
+                <Page
+                  width={width ? width : 1}
+                  pageNumber={currPage}
+                  scale={scale}
+                  rotate={rotation}
+                  key={"@" + renderedScale}
+                />
+              ) : null}
+              {/* this will show while loading */}
               <Page
+                className={cn(isLoading ? "hidden" : "")}
                 width={width ? width : 1}
                 pageNumber={currPage}
                 scale={scale}
+                rotate={rotation}
+                key={"@" + scale}
+                loading={
+                  <div className="flex justify-center">
+                    <Loader2 className="my-24 h-6 w-6 animate-spin" />
+                  </div>
+                }
+                onRenderSuccess={() => setRenderedScale(scale)}
               />
+              isLoading
             </Document>
           </div>
         </SimpleBar>
